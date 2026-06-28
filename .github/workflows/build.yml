@@ -28,6 +28,7 @@ jobs:
             GOARCH=arm64 \
             CGO_CFLAGS='-march=armv8-a -mtune=cortex-a53' \
             go build \
+            -buildvcs=false \
             -tags with_gvisor \
             -trimpath \
             -ldflags='-w -s -buildid=' \
