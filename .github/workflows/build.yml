@@ -1,4 +1,4 @@
-name: Build Mihomo with musl-cross
+name: Build Mihomo for OpenWrt (musl dynamic)
 
 on:
   workflow_dispatch:
@@ -7,16 +7,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Install musl-tools
+        run: |
+          sudo apt update
+          sudo apt install -y musl-tools
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Checkout mihomo
         uses: actions/checkout@v4
         with:
           repository: MetaCubeX/mihomo
           ref: v1.19.27
-
-      - name: Install musl-cross
-        run: |
-          sudo apt update
-          sudo apt install -y musl-tools  # Ubuntu 的 musl 工具链包
 
       - name: Build with musl-gcc
         run: |
@@ -25,11 +30,15 @@ jobs:
           GOOS=linux GOARCH=arm64 \
           go build -tags with_gvisor -trimpath \
           -ldflags="-w -s -buildid=" \
-          -o mihomo-linux-arm64-musl \
-          github.com/MetaCubeX/mihomo
+          -o mihomo-linux-arm64-musl .
 
-      - name: Upload
+      - name: Verify binary
+        run: |
+          file mihomo-linux-arm64-musl
+          ldd mihomo-linux-arm64-musl || echo "ldd not available"
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mihomo-musl
+          name: mihomo-openwrt-musl
           path: mihomo-linux-arm64-musl
