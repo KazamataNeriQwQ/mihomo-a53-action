@@ -7,10 +7,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install musl-tools
+      - name: Install musl-cross
         run: |
           sudo apt update
-          sudo apt install -y musl-tools
+          # 安装完整的交叉编译工具链
+          sudo apt install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+          # 下载 musl 工具链
+          wget https://musl.cc/aarch64-linux-musl-cross.tgz
+          tar -xzf aarch64-linux-musl-cross.tgz
+          echo "$(pwd)/aarch64-linux-musl-cross/bin" >> $GITHUB_PATH
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -23,18 +28,20 @@ jobs:
           repository: MetaCubeX/mihomo
           ref: v1.19.27
 
-      - name: Build with musl-gcc
+      - name: Build with aarch64-linux-musl-gcc
         run: |
-          CC=musl-gcc \
+          CC=aarch64-linux-musl-gcc \
           CGO_ENABLED=1 \
           GOOS=linux GOARCH=arm64 \
           go build -tags with_gvisor -trimpath \
           -ldflags="-w -s -buildid=" \
           -o mihomo-linux-arm64-musl .
 
-      - name: Verify binary
-        run: |
-          file mihomo-linux-arm64-musl
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mihomo-openwrt-musl
+          path: mihomo-linux-arm64-musl          file mihomo-linux-arm64-musl
           ldd mihomo-linux-arm64-musl || echo "ldd not available"
 
       - name: Upload artifact
