@@ -1,4 +1,4 @@
-name: Build Mihomo with Alpine (musl native)
+name: Build Mihomo with aarch64-musl-gcc
 
 on:
   workflow_dispatch:
@@ -12,28 +12,40 @@ jobs:
         with:
           go-version: '1.24'
 
+      - name: Install aarch64 musl toolchain
+        run: |
+          sudo apt update
+          sudo apt install -y wget xz-utils
+          # 使用清华镜像
+          wget https://mirrors.tuna.tsinghua.edu.cn/musl-cross/musl-cross/aarch64-linux-musl-cross.tgz
+          tar -xzf aarch64-linux-musl-cross.tgz
+          echo "$(pwd)/aarch64-linux-musl-cross/bin" >> $GITHUB_PATH
+
       - name: Checkout mihomo
         uses: actions/checkout@v4
         with:
           repository: MetaCubeX/mihomo
           ref: v1.19.27
 
-      - name: Build in Alpine
+      - name: Build with aarch64-linux-musl-gcc
         run: |
-          docker run --rm -v $(pwd):/workspace -w /workspace \
-          alpine:3.19 sh -c "
-            apk add --no-cache go gcc musl-dev git make binutils &&
-            CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
-            CGO_CFLAGS='-march=armv8-a -mtune=cortex-a53' \
-            go build -tags with_gvisor -trimpath \
-            -ldflags='-w -s -buildid=' \
-            -o mihomo-linux-arm64-musl .
-          "
+          CC=aarch64-linux-musl-gcc \
+          CGO_ENABLED=1 \
+          GOOS=linux \
+          GOARCH=arm64 \
+          CGO_CFLAGS="-march=armv8-a -mtune=cortex-a53" \
+          go build \
+          -tags with_gvisor \
+          -trimpath \
+          -ldflags="-w -s -buildid=" \
+          -o mihomo-linux-arm64-musl .
 
-      - name: Verify
-        run: file mihomo-linux-arm64-musl
+      - name: Verify binary
+        run: |
+          file mihomo-linux-arm64-musl
+          readelf -d mihomo-linux-arm64-musl 2>/dev/null | grep NEEDED || echo "No dynamic dependencies"
 
-      - name: Upload
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: mihomo-aarch64-musl
