@@ -1,4 +1,4 @@
-name: Build Mihomo with Alpine cross
+name: Build Mihomo for A53
 
 on:
   workflow_dispatch:
@@ -7,6 +7,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -18,30 +23,16 @@ jobs:
           repository: MetaCubeX/mihomo
           ref: v1.19.27
 
-      - name: Build in Alpine container
+      - name: Build in ARM64 Alpine
         run: |
           docker run --rm -v $(pwd):/workspace -w /workspace \
+          --platform linux/arm64 \
           alpine:3.19 sh -c "
             apk update &&
-            # 安装正确的交叉编译包
-            apk add --no-cache \
-              go \
-              git \
-              make \
-              binutils \
-              gcc \
-              musl-dev \
-              g++ \
-              gcc-aarch64 \
-              musl-dev-aarch64-cross \
-              binutils-aarch64 && \
-            # 使用交叉编译工具链
-            CC=aarch64-alpine-linux-musl-gcc \
-            CXX=aarch64-alpine-linux-musl-g++ \
+            apk add --no-cache go gcc musl-dev git make binutils &&
             CGO_ENABLED=1 \
             GOOS=linux \
             GOARCH=arm64 \
-            CGO_CFLAGS='-march=armv8-a -mtune=cortex-a53' \
             go build \
             -buildvcs=false \
             -tags with_gvisor \
@@ -49,6 +40,11 @@ jobs:
             -ldflags='-w -s -buildid=' \
             -o mihomo-linux-arm64-musl .
           "
+
+      - name: Verify binary
+        run: |
+          file mihomo-linux-arm64-musl
+          readelf -d mihomo-linux-arm64-musl 2>/dev/null | grep NEEDED || echo "No dynamic dependencies"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
