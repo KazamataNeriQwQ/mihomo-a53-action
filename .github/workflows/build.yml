@@ -1,4 +1,4 @@
-name: Build Mihomo with aarch64-musl-gcc
+name: Build Mihomo with Alpine (musl native)
 
 on:
   workflow_dispatch:
@@ -12,35 +12,27 @@ jobs:
         with:
           go-version: '1.24'
 
-      - name: Install aarch64 musl toolchain
-        run: |
-          sudo apt update
-          sudo apt install -y wget xz-utils
-          # 尝试多个源
-          if ! wget --timeout=30 --tries=3 https://musl.cc/aarch64-linux-musl-cross.tgz; then
-            wget --timeout=30 --tries=3 https://github.com/richfelker/musl-cross-make/releases/download/v0.9.10/aarch64-linux-musl-cross.tgz
-          fi
-          tar -xzf aarch64-linux-musl-cross.tgz
-          echo "$(pwd)/aarch64-linux-musl-cross/bin" >> $GITHUB_PATH
-
       - name: Checkout mihomo
         uses: actions/checkout@v4
         with:
           repository: MetaCubeX/mihomo
           ref: v1.19.27
 
-      - name: Build with aarch64-linux-musl-gcc
+      - name: Build in Alpine container
         run: |
-          CC=aarch64-linux-musl-gcc \
-          CGO_ENABLED=1 \
-          GOOS=linux \
-          GOARCH=arm64 \
-          CGO_CFLAGS="-march=armv8-a -mtune=cortex-a53" \
-          go build \
-          -tags with_gvisor \
-          -trimpath \
-          -ldflags="-w -s -buildid=" \
-          -o mihomo-linux-arm64-musl .
+          docker run --rm -v $(pwd):/workspace -w /workspace \
+          alpine:3.19 sh -c "
+            apk add --no-cache go gcc musl-dev git make binutils &&
+            CGO_ENABLED=1 \
+            GOOS=linux \
+            GOARCH=arm64 \
+            CGO_CFLAGS='-march=armv8-a -mtune=cortex-a53' \
+            go build \
+            -tags with_gvisor \
+            -trimpath \
+            -ldflags='-w -s -buildid=' \
+            -o mihomo-linux-arm64-musl .
+          "
 
       - name: Verify binary
         run: |
