@@ -1,0 +1,38 @@
+name: Build Mihomo for A53
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Checkout mihomo
+        uses: actions/checkout@v4
+        with:
+          repository: MetaCubeX/mihomo
+          ref: v1.19.27
+
+      - name: Build mihomo for A53
+        run: |
+          CGO_ENABLED=1 \
+          GOOS=linux \
+          GOARCH=arm64 \
+          go build \
+          -buildvcs=false \
+          -tags with_gvisor \
+          -trimpath \
+          -ldflags="-w -s -buildid=" \
+          -o mihomo-aarch64_cortex-a53 \
+          github.com/MetaCubeX/mihomo
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mihomo-a53
+          path: mihomo-aarch64_cortex-a53
