@@ -17,9 +17,11 @@ jobs:
         with:
           repository: MetaCubeX/mihomo
           ref: v1.19.27
+          path: mihomo
 
       - name: Build mihomo for A53
         run: |
+          cd mihomo
           CGO_ENABLED=1 \
           GOOS=linux \
           GOARCH=arm64 \
@@ -28,11 +30,10 @@ jobs:
           -tags with_gvisor \
           -trimpath \
           -ldflags="-w -s -buildid=" \
-          -o mihomo-aarch64_cortex-a53 \
-          github.com/MetaCubeX/mihomo
+          -o mihomo-aarch64_cortex-a53 .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: mihomo-a53
-          path: mihomo-aarch64_cortex-a53
+          path: mihomo/mihomo-aarch64_cortex-a53
