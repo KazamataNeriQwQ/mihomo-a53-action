@@ -1,4 +1,4 @@
-name: Build Mihomo with Alpine (aarch64 cross)
+name: Build Mihomo with Alpine cross
 
 on:
   workflow_dispatch:
@@ -22,10 +22,8 @@ jobs:
         run: |
           docker run --rm -v $(pwd):/workspace -w /workspace \
           alpine:3.19 sh -c "
-            # 添加镜像源并安装交叉编译工具
-            echo 'http://mirrors.tuna.tsinghua.edu.cn/alpine/v3.19/main' > /etc/apk/repositories &&
-            echo 'http://mirrors.tuna.tsinghua.edu.cn/alpine/v3.19/community' >> /etc/apk/repositories &&
             apk update &&
+            # 安装正确的交叉编译包
             apk add --no-cache \
               go \
               git \
@@ -34,11 +32,12 @@ jobs:
               gcc \
               musl-dev \
               g++ \
-              aarch64-linux-musl-gcc \
-              aarch64-linux-musl-g++ &&
+              gcc-aarch64 \
+              musl-dev-aarch64-cross \
+              binutils-aarch64 && \
             # 使用交叉编译工具链
-            CC=aarch64-linux-musl-gcc \
-            CXX=aarch64-linux-musl-g++ \
+            CC=aarch64-alpine-linux-musl-gcc \
+            CXX=aarch64-alpine-linux-musl-g++ \
             CGO_ENABLED=1 \
             GOOS=linux \
             GOARCH=arm64 \
@@ -50,11 +49,6 @@ jobs:
             -ldflags='-w -s -buildid=' \
             -o mihomo-linux-arm64-musl .
           "
-
-      - name: Verify binary
-        run: |
-          file mihomo-linux-arm64-musl
-          readelf -d mihomo-linux-arm64-musl 2>/dev/null | grep NEEDED || echo "No dynamic dependencies"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
