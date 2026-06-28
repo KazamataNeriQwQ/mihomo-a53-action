@@ -3,7 +3,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mihomo
-PKG_VERSION:=v1.19.27
+PKG_VERSION:=1.19.27
 PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
@@ -32,6 +32,9 @@ define Package/mihomo/description
   This package compiles the mihomo binary from source.
 endef
 
+# 设置 Go 环境变量
+GO_PKG:=github.com/MetaCubeX/mihomo
+
 define Build/Compile
 	( \
 		cd $(PKG_BUILD_DIR); \
@@ -39,18 +42,18 @@ define Build/Compile
 		GOOS=linux \
 		GOARCH=$(ARCH) \
 		$(if $(CONFIG_arm),GOARM=7,) \
-		go build \
+		go build -v \
 		-buildvcs=false \
 		-tags with_gvisor \
 		-trimpath \
 		-ldflags="-w -s -buildid=" \
-		-o mihomo . \
+		-o $(PKG_NAME) . \
 	)
 endef
 
 define Package/mihomo/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mihomo $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,mihomo))
