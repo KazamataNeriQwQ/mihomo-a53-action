@@ -1,4 +1,4 @@
-name: Build Mihomo with Alpine (musl native)
+name: Build Mihomo with Alpine (aarch64 cross)
 
 on:
   workflow_dispatch:
@@ -22,7 +22,23 @@ jobs:
         run: |
           docker run --rm -v $(pwd):/workspace -w /workspace \
           alpine:3.19 sh -c "
-            apk add --no-cache go gcc musl-dev git make binutils &&
+            # 添加镜像源并安装交叉编译工具
+            echo 'http://mirrors.tuna.tsinghua.edu.cn/alpine/v3.19/main' > /etc/apk/repositories &&
+            echo 'http://mirrors.tuna.tsinghua.edu.cn/alpine/v3.19/community' >> /etc/apk/repositories &&
+            apk update &&
+            apk add --no-cache \
+              go \
+              git \
+              make \
+              binutils \
+              gcc \
+              musl-dev \
+              g++ \
+              aarch64-linux-musl-gcc \
+              aarch64-linux-musl-g++ &&
+            # 使用交叉编译工具链
+            CC=aarch64-linux-musl-gcc \
+            CXX=aarch64-linux-musl-g++ \
             CGO_ENABLED=1 \
             GOOS=linux \
             GOARCH=arm64 \
