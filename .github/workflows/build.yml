@@ -16,8 +16,9 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y wget xz-utils
-          # 使用清华镜像
-          wget https://mirrors.tuna.tsinghua.edu.cn/musl-cross/musl-cross/aarch64-linux-musl-cross.tgz
+          # 使用正确的镜像源
+          wget https://musl.cc/aarch64-linux-musl-cross.tgz || \
+          wget https://github.com/richfelker/musl-cross-make/releases/download/v0.9.10/aarch64-linux-musl-cross.tgz
           tar -xzf aarch64-linux-musl-cross.tgz
           echo "$(pwd)/aarch64-linux-musl-cross/bin" >> $GITHUB_PATH
 
