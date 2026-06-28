@@ -6,10 +6,10 @@ PKG_NAME:=mihomo
 PKG_VERSION:=1.19.27
 PKG_RELEASE:=1
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
-PKG_SOURCE_VERSION:=v1.19.27
-PKG_MIRROR_HASH:=skip
+# 使用 tar.gz 源码包代替 git
+PKG_SOURCE:=mihomo-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo/archive/v$(PKG_VERSION).tar.gz
+PKG_HASH:=skip
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_LICENSE:=MIT
@@ -31,9 +31,6 @@ define Package/mihomo/description
   Mihomo is a simple and fast proxy client.
   This package compiles the mihomo binary from source.
 endef
-
-# 设置 Go 环境变量
-GO_PKG:=github.com/MetaCubeX/mihomo
 
 define Build/Compile
 	( \
