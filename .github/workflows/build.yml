@@ -16,7 +16,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y wget xz-utils
-          wget https://musl.cc/aarch64-linux-musl-cross.tgz
+          # 使用清华镜像加速下载
+          wget https://mirrors.tuna.tsinghua.edu.cn/musl-cross/musl-cross/aarch64-linux-musl-cross.tgz
           tar -xzf aarch64-linux-musl-cross.tgz
           echo "$(pwd)/aarch64-linux-musl-cross/bin" >> $GITHUB_PATH
 
@@ -35,6 +36,20 @@ jobs:
           CGO_CFLAGS="-march=armv8-a -mtune=cortex-a53" \
           go build \
           -tags with_gvisor \
+          -trimpath \
+          -ldflags="-w -s -buildid=" \
+          -o mihomo-linux-arm64-musl .
+
+      - name: Verify binary
+        run: |
+          file mihomo-linux-arm64-musl
+          aarch64-linux-musl-readelf -d mihomo-linux-arm64-musl | grep NEEDED || echo "Static binary"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mihomo-aarch64-musl
+          path: mihomo-linux-arm64-musl          -tags with_gvisor \
           -trimpath \
           -ldflags="-w -s -buildid=" \
           -o mihomo-linux-arm64-musl .
