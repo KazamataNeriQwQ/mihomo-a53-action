@@ -24,46 +24,16 @@ jobs:
           alpine:3.19 sh -c "
             apk add --no-cache go gcc musl-dev git make binutils &&
             CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+            CGO_CFLAGS='-march=armv8-a -mtune=cortex-a53' \
             go build -tags with_gvisor -trimpath \
             -ldflags='-w -s -buildid=' \
             -o mihomo-linux-arm64-musl .
           "
 
-      - name: Verify binary
-        run: |
-          file mihomo-linux-arm64-musl
-          ldd mihomo-linux-arm64-musl || echo "ldd not available"
+      - name: Verify
+        run: file mihomo-linux-arm64-musl
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mihomo-aarch64-musl
-          path: mihomo-linux-arm64-musl          go build \
-          -tags with_gvisor \
-          -trimpath \
-          -ldflags="-w -s -buildid=" \
-          -o mihomo-linux-arm64-musl .
-
-      - name: Verify binary
-        run: |
-          file mihomo-linux-arm64-musl
-          aarch64-linux-musl-readelf -d mihomo-linux-arm64-musl | grep NEEDED || echo "Static binary"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mihomo-aarch64-musl
-          path: mihomo-linux-arm64-musl          -tags with_gvisor \
-          -trimpath \
-          -ldflags="-w -s -buildid=" \
-          -o mihomo-linux-arm64-musl .
-
-      - name: Verify binary
-        run: |
-          file mihomo-linux-arm64-musl
-          aarch64-linux-musl-readelf -d mihomo-linux-arm64-musl | grep NEEDED || echo "Static binary"
-
-      - name: Upload artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: mihomo-aarch64-musl
