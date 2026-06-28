@@ -1,4 +1,4 @@
-name: Build Mihomo for OpenWrt (musl dynamic)
+name: Build Mihomo with aarch64-musl-gcc
 
 on:
   workflow_dispatch:
@@ -7,20 +7,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install musl-cross
-        run: |
-          sudo apt update
-          # 安装完整的交叉编译工具链
-          sudo apt install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
-          # 下载 musl 工具链
-          wget https://musl.cc/aarch64-linux-musl-cross.tgz
-          tar -xzf aarch64-linux-musl-cross.tgz
-          echo "$(pwd)/aarch64-linux-musl-cross/bin" >> $GITHUB_PATH
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+
+      - name: Install aarch64 musl toolchain
+        run: |
+          sudo apt update
+          sudo apt install -y wget xz-utils
+          wget https://musl.cc/aarch64-linux-musl-cross.tgz
+          tar -xzf aarch64-linux-musl-cross.tgz
+          echo "$(pwd)/aarch64-linux-musl-cross/bin" >> $GITHUB_PATH
 
       - name: Checkout mihomo
         uses: actions/checkout@v4
@@ -32,20 +30,22 @@ jobs:
         run: |
           CC=aarch64-linux-musl-gcc \
           CGO_ENABLED=1 \
-          GOOS=linux GOARCH=arm64 \
-          go build -tags with_gvisor -trimpath \
+          GOOS=linux \
+          GOARCH=arm64 \
+          CGO_CFLAGS="-march=armv8-a -mtune=cortex-a53" \
+          go build \
+          -tags with_gvisor \
+          -trimpath \
           -ldflags="-w -s -buildid=" \
           -o mihomo-linux-arm64-musl .
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mihomo-openwrt-musl
-          path: mihomo-linux-arm64-musl          file mihomo-linux-arm64-musl
-          ldd mihomo-linux-arm64-musl || echo "ldd not available"
+      - name: Verify binary
+        run: |
+          file mihomo-linux-arm64-musl
+          aarch64-linux-musl-readelf -d mihomo-linux-arm64-musl | grep NEEDED || echo "Static binary"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mihomo-openwrt-musl
+          name: mihomo-aarch64-musl
           path: mihomo-linux-arm64-musl
