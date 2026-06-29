@@ -1,10 +1,13 @@
-name: Build Mihomo for OpenWrt
+name: Build Packages
 
 on:
   workflow_dispatch:
   push:
     tags:
       - v*
+
+env:
+  PACKAGE_DIRS: "mihomo"
 
 jobs:
   get-version:
@@ -15,6 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Get version
         id: version
         run: |
@@ -24,19 +28,79 @@ jobs:
             VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+  scan-packages:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.scan.outputs.packages }}
+      package-list: ${{ steps.scan.outputs.package-list }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Scan package directories
+        id: scan
+        run: |
+          PACKAGES_JSON="[]"
+          PACKAGE_LIST=""
+
+          for dir in ${{ env.PACKAGE_DIRS }}; do
+            if [ -d "$dir" ] && [ -f "$dir/Makefile" ]; then
+              PKG_NAME=$(grep "^PKG_NAME" "$dir/Makefile" | head -1 | cut -d'=' -f2 | tr -d '[:space:]' || echo "")
+              PKG_VERSION=$(grep "^PKG_VERSION" "$dir/Makefile" | head -1 | cut -d'=' -f2 | tr -d '[:space:]' || echo "")
+              PKG_TITLE=$(grep "TITLE:=" "$dir/Makefile" | head -1 | cut -d':=' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//' || echo "")
+
+              if [ -z "$PKG_NAME" ]; then
+                PKG_NAME="$dir"
+              fi
+
+              PACKAGES_JSON=$(echo "$PACKAGES_JSON" | jq -c \
+                --arg name "$PKG_NAME" \
+                --arg version "$PKG_VERSION" \
+                --arg dir "$dir" \
+                --arg title "$PKG_TITLE" \
+                '. + [{"name": $name, "version": $version, "dir": $dir, "title": $title}]')
+
+              if [ -z "$PACKAGE_LIST" ]; then
+                PACKAGE_LIST="$PKG_NAME"
+              else
+                PACKAGE_LIST="$PACKAGE_LIST $PKG_NAME"
+              fi
+
+              echo "Found package: $PKG_NAME (version: $PKG_VERSION) in $dir"
+            else
+              echo "Warning: $dir is not a valid package directory"
+            fi
+          done
+
+          {
+            echo "packages<<EOF"
+            echo "$PACKAGES_JSON"
+            echo "EOF"
+            echo "package-list=$PACKAGE_LIST"
+          } >> $GITHUB_OUTPUT
+
+          echo "Found packages: $PACKAGE_LIST"
+          echo "JSON output: $PACKAGES_JSON"
 
   build:
     name: Build ${{ matrix.arch }}-${{ matrix.sdk }}
-    needs: get-version
+    needs: [get-version, scan-packages]
     runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
+        pkg: ${{ fromJson(needs.scan-packages.outputs.packages).*.name }}
         arch:
           - aarch64_cortex-a53
         sdk:
-          - openwrt-21.02-musl
+          - openwrt-21.02
 
     steps:
       - uses: actions/checkout@v4
@@ -44,33 +108,24 @@ jobs:
           fetch-depth: 0
 
       - name: Ensure src contains full git metadata
-        # The OpenWrt package build copies ./src/ into the package build dir.
-        # Many package build steps (and the Go build ldflags) call `git` and expect
-        # a working repository. Check out the repo a second time into ./src so
-        # ./src/.git is present when OpenWrt copies src/.
         uses: actions/checkout@v4
         with:
           path: src
           fetch-depth: 0
 
-      - name: Inject version and git env for build
-        run: |
-          echo "VERSION=${{ needs.get-version.outputs.version }}" >> $GITHUB_ENV
-          echo "GIT_DISCOVERY_ACROSS_FILESYSTEM=1" >> $GITHUB_ENV
-
-      - name: Build mihomo package
+      - name: Build package
         uses: sirpdboy/gh-action-sdk@go1.26
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.sdk }}
           FEEDNAME: packages_ci
-          PACKAGES: mihomo
+          PACKAGES: ${{ matrix.pkg }}
           NO_REFRESH_CHECK: true
           V: s
           VERSION: ${{ needs.get-version.outputs.version }}
           GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
           LIBC: musl
 
-      - name: Upload artifacts (for workflow run)
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.arch }}-${{ matrix.sdk }}
@@ -81,23 +136,52 @@ jobs:
 
       - name: Create release archive
         run: |
-          tar -czvf ${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz -C bin/packages/${{ matrix.arch }}/ packages_ci
+          tar -czvf ${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz -C bin/packages/${{ matrix.arch }}/ packages_ci || true
+
+      - name: Generate release notes
+        id: release_notes
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
+          PACKAGE_LIST: ${{ needs.scan-packages.outputs.package-list }}
+        run: |
+          cat > release-notes.md << 'EOF'
+          # 🚀 OpenWRT Packages ${{ needs.get-version.outputs.version }}
+
+          - Built for OpenWrt (musl).
+          ## 📦 Package Overview
+          EOF
+          echo "" >> release-notes.md
+          echo "| Package | Version | Description |" >> release-notes.md
+          echo "|---------|---------|-------------|" >> release-notes.md
+
+          PACKAGES_JSON='${{ needs.scan-packages.outputs.packages }}'
+          echo "$PACKAGES_JSON" | jq -c '.[]' | while read -r pkg; do
+            PKG_NAME=$(echo "$pkg" | jq -r '.name')
+            PKG_VERSION=$(echo "$pkg" | jq -r '.version')
+            PKG_TITLE=$(echo "$pkg" | jq -r '.title')
+            echo "| \`$PKG_NAME\` | \`${PKG_VERSION:-$VERSION}\` | $PKG_TITLE |" >> release-notes.md
+          done
+
+          echo "" >> release-notes.md
+          echo "## 🏗️ Supported Architectures" >> release-notes.md
+          echo "" >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "aarch64_generic       # ARMv8 64-bit (Generic)" >> release-notes.md
+          echo '```' >> release-notes.md
+
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release-notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Upload to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: ncipollo/release-action@v1
         with:
-          name: Mihomo for OpenWrt ${{ needs.get-version.outputs.version }}
+          name: OpenWRT Packages ${{ needs.get-version.outputs.version }}
           tag: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           replacesArtifacts: true
           prerelease: false
           artifacts: "${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz"
-          body: |
-            ## Mihomo ${{ needs.get-version.outputs.version }}
-            
-            Built for OpenWrt (musl).
-            
-            ### Supported architecture
-            - aarch64_generic
+          body: ${{ steps.release_notes.outputs.notes }}
