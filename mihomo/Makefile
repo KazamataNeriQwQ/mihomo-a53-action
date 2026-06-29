@@ -33,18 +33,16 @@ define Build/Compile
 	( \
 		cd $(PKG_BUILD_DIR); \
 		case "$(ARCH)" in \
-			aarch64) GOARCH_GO=arm64 ;; \
-			x86_64)  GOARCH_GO=amd64 ;; \
-			arm)     GOARCH_GO=arm ;; \
-			mips)    GOARCH_GO=mips ;; \
-			mipsel)  GOARCH_GO=mipsle ;; \
-			riscv64) GOARCH_GO=riscv64 ;; \
-			*)       GOARCH_GO=$(ARCH) ;; \
+			aarch64) export GOARCH=arm64;; \
+			x86_64)  export GOARCH=amd64;; \
+			arm)     export GOARCH=arm; export GOARM=7;; \
+			mips)    export GOARCH=mips;; \
+			mipsel)  export GOARCH=mipsle;; \
+			riscv64) export GOARCH=riscv64;; \
+			*)       export GOARCH=$(ARCH);; \
 		esac; \
-		CGO_ENABLED=1 \
-		GOOS=linux \
-		GOARCH=$$GOARCH_GO \
-		$(if $(CONFIG_arm),GOARM=7,) \
+		export CGO_ENABLED=1; \
+		export GOOS=linux; \
 		go build -v \
 		-buildvcs=false \
 		-tags with_gvisor \
