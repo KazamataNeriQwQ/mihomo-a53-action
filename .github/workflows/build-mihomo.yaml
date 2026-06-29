@@ -51,6 +51,7 @@ jobs:
           FEEDNAME: packages_ci
           PACKAGES: mihomo
           NO_REFRESH_CHECK: true
+          V: s
 
       - name: Upload artifacts (for workflow run)
         uses: actions/upload-artifact@v4
