@@ -51,7 +51,23 @@ endef
 # endef
 
 define Package/mihomo/install
-	$(call GoPackage/Package/Install/Bin,$(1))
+	$(INSTALL_DIR) $(1)/usr/bin
+	# Prefer .go_work build outputs, fall back to bin/ or other locations.
+	# Copy any executable files produced by the Go build into the package /usr/bin.
+	if [ -d "$(PKG_BUILD_DIR)/.go_work/build/bin" ]; then \
+		echo "Installing from .go_work/build/bin"; \
+		find "$(PKG_BUILD_DIR)/.go_work/build/bin" -type f -perm /111 -exec cp -a {} $(1)/usr/bin/ \; ; \
+	elif [ -d "$(PKG_BUILD_DIR)/bin" ]; then \
+		echo "Installing from bin"; \
+		find "$(PKG_BUILD_DIR)/bin" -type f -perm /111 -exec cp -a {} $(1)/usr/bin/ \; ; \
+	elif ls "$(PKG_BUILD_DIR)"/* 1>/dev/null 2>&1; then \
+		echo "Installing from fallback files in $(PKG_BUILD_DIR)"; \
+		find "$(PKG_BUILD_DIR)" -maxdepth 2 -type f -perm /111 -name '*mihomo*' -exec cp -a {} $(1)/usr/bin/ \; || true; \
+	else \
+		echo "ERROR: no build output found in .go_work/build/bin or bin/ under $(PKG_BUILD_DIR)"; \
+		echo "Listing $(PKG_BUILD_DIR):"; ls -la "$(PKG_BUILD_DIR)" || true; \
+		exit 1; \
+	fi
 endef
 
 $(eval $(call GoBinPackage,mihomo))
