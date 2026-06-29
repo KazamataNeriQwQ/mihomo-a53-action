@@ -29,17 +29,18 @@ define Package/mihomo/description
   Mihomo is a simple and fast proxy client.
 endef
 
-# 手动编译（保留你之前的 CGO 和动态链接设置）
 define Build/Compile
 	( \
 		cd $(PKG_BUILD_DIR); \
-		GOARCH_GO=$(shell case "$(ARCH)" in \
-			aarch64) echo arm64 ;; \
-			x86_64) echo amd64 ;; \
-			mipsel) echo mipsle ;; \
-			riscv64) echo riscv64 ;; \
-			*) echo $(ARCH) ;; \
-		esac); \
+		case "$(ARCH)" in \
+			aarch64) GOARCH_GO=arm64 ;; \
+			x86_64)  GOARCH_GO=amd64 ;; \
+			arm)     GOARCH_GO=arm ;; \
+			mips)    GOARCH_GO=mips ;; \
+			mipsel)  GOARCH_GO=mipsle ;; \
+			riscv64) GOARCH_GO=riscv64 ;; \
+			*)       GOARCH_GO=$(ARCH) ;; \
+		esac; \
 		CGO_ENABLED=1 \
 		GOOS=linux \
 		GOARCH=$$GOARCH_GO \
