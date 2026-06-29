@@ -27,8 +27,8 @@ PKG_BUILD_FLAGS:=no-mips16
 # 定义 Go 包路径（mihomo 的主包在根目录）
 # GO_PKG:=github.com/MetaCubeX/mihomo
 
-# 如果需要注入版本信息
 GO_PKG_LDFLAGS_X:=main.Version=$(PKG_VERSION)
+GO_PKG_LDFLAGS:=$(GO_PKG_LDFLAGS_X)
 
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
