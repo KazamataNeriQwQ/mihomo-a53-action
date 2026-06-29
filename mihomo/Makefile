@@ -8,7 +8,7 @@ PKG_RELEASE:=1
 
 # 使用 tar.gz 源码包代替 git
 PKG_SOURCE:=mihomo-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo/archive/v$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo/archive/refs/tags/v$(PKG_VERSION).tar.gz
 PKG_HASH:=skip
 
 PKG_BUILD_DEPENDS:=golang/host
