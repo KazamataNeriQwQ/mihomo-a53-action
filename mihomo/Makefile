@@ -9,6 +9,8 @@ PKG_NAME:=mihomo
 PKG_VERSION:=1.19.27
 PKG_RELEASE:=1
 
+PKG_ARCH:=aarch64_generic
+
 PKG_SOURCE:=v$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo/archive/refs/tags/
 PKG_SOURCE_SUBDIR:=mihomo-v$(PKG_VERSION)
