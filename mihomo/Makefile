@@ -33,9 +33,16 @@ endef
 define Build/Compile
 	( \
 		cd $(PKG_BUILD_DIR); \
+		GOARCH_GO=$(shell case "$(ARCH)" in \
+			aarch64) echo arm64 ;; \
+			x86_64) echo amd64 ;; \
+			mipsel) echo mipsle ;; \
+			riscv64) echo riscv64 ;; \
+			*) echo $(ARCH) ;; \
+		esac); \
 		CGO_ENABLED=1 \
 		GOOS=linux \
-		GOARCH=$(ARCH) \
+		GOARCH=$$GOARCH_GO \
 		$(if $(CONFIG_arm),GOARM=7,) \
 		go build -v \
 		-buildvcs=false \
