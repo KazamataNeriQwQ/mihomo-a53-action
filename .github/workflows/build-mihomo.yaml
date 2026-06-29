@@ -36,7 +36,7 @@ jobs:
         arch:
           - aarch64_cortex-a53
         sdk:
-          - openwrt-21.02
+          - openwrt-21.02-musl
 
     steps:
       - uses: actions/checkout@v4
@@ -68,6 +68,7 @@ jobs:
           V: s
           VERSION: ${{ needs.get-version.outputs.version }}
           GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
+          LIBC: musl
 
       - name: Upload artifacts (for workflow run)
         uses: actions/upload-artifact@v4
@@ -75,17 +76,12 @@ jobs:
           name: ${{ matrix.arch }}-${{ matrix.sdk }}
           path: |
             bin/packages/${{ matrix.arch }}/packages_ci/*.ipk
-            bin/packages/riscv64_generic/packages_ci/*.apk
             bin/packages/${{ matrix.arch }}/packages_ci/*.apk
           if-no-files-found: warn
 
       - name: Create release archive
         run: |
-          if [ "${{ matrix.arch }}" = "riscv64_riscv64" ] && [ "${{ matrix.sdk }}" = "SNAPSHOT" ]; then
-            tar -czvf ${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz -C bin/packages/riscv64_generic/ packages_ci
-          else
-            tar -czvf ${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz -C bin/packages/${{ matrix.arch }}/ packages_ci
-          fi
+          tar -czvf ${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz -C bin/packages/${{ matrix.arch }}/ packages_ci
 
       - name: Upload to release
         if: startsWith(github.ref, 'refs/tags/')
@@ -101,7 +97,7 @@ jobs:
           body: |
             ## Mihomo ${{ needs.get-version.outputs.version }}
             
-            Built for OpenWrt 24.10 and SNAPSHOT.
+            Built for OpenWrt (musl).
             
-            ### Supported architectures
-            - aarch64_cortex-a53
+            ### Supported architecture
+            - aarch64_generic
