@@ -9,17 +9,14 @@ PKG_RELEASE:=1
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
 PKG_SOURCE_VERSION:=v$(PKG_VERSION)
-
-# 下面两个变量必须正确，缺一不可：
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz   # 生成的文件名
-PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)   # 解压后的目录名（即 git archive 的前缀）
-
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_HASH:=skip
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
-PKG_MAINTAINER:=Your Name <your.email@example.com>
+PKG_MAINTAINER:=KazamataNeri <Shiro_Neri@iCloud.com>
 
 include $(INCLUDE_DIR)/package.mk
 
