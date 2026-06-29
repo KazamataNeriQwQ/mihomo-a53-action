@@ -2,6 +2,11 @@ name: Build Mihomo for OpenWrt
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (optional, overrides git tag)'
+        required: false
+        default: ''
   push:
     tags:
       - v*
@@ -10,36 +15,37 @@ jobs:
   get-version:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.set-version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Get version
-        id: version
+      - name: Set version
+        id: set-version
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
           else
-            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+            VERSION="${GITHUB_REF_NAME#v}"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "GIT_DISCOVERY_ACROSS_FILESYSTEM=1" >> $GITHUB_ENV
 
   build:
-    name: Build ${{ matrix.arch }}-${{ matrix.sdk }}
     needs: get-version
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
-      fail-fast: false
       matrix:
-        arch:
-          - aarch64_cortex-a53
-        sdk:
-          - openwrt-24.10
-          - openwrt-21.02
-          - SNAPSHOT
-
+        include:
+          - arch: aarch64_cortex-a53
+            sdk: 24.10
+          - arch: arm_cortex-a7_neon-vfpv4
+            sdk: 24.10
+          - arch: x86_64
+            sdk: 24.10
+          - arch: riscv64
+            sdk: SNAPSHOT  # riscv64 special
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,8 +59,10 @@ jobs:
           PACKAGES: mihomo
           NO_REFRESH_CHECK: true
           V: s
+          VERSION: ${{ needs.get-version.outputs.version }}
+          GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
 
-      - name: Upload artifacts (for workflow run)
+      - name: Upload artifacts (IPK/APK)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.arch }}-${{ matrix.sdk }}
@@ -66,7 +74,7 @@ jobs:
 
       - name: Create release archive
         run: |
-          if [ "${{ matrix.arch }}" = "riscv64_riscv64" ] && [ "${{ matrix.sdk }}" = "SNAPSHOT" ]; then
+          if [ "${{ matrix.arch }}" = "riscv64" ] && [ "${{ matrix.sdk }}" = "SNAPSHOT" ]; then
             tar -czvf ${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz -C bin/packages/riscv64_generic/ packages_ci
           else
             tar -czvf ${{ matrix.sdk }}-${{ matrix.arch }}.tar.gz -C bin/packages/${{ matrix.arch }}/ packages_ci
@@ -89,4 +97,4 @@ jobs:
             Built for OpenWrt 24.10 and SNAPSHOT.
             
             ### Supported architectures
-            - aarch64_cortex-a53
+            - ${{ matrix.arch }}
