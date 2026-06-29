@@ -1,9 +1,9 @@
 name: Build Mihomo for OpenWrt
 
 on:
-  workflow_dispatch:
-  push:
-    tags:
+  workflow_dispatch: :
+  pull:
+    tag:
       - v*
 
 jobs:
@@ -43,6 +43,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
+
+      - name: Ensure src contains full git metadata
+        # The OpenWrt package build copies ./src/ into the package build dir.
+        # Many package build steps (and the Go build ldflags) call `git` and expect
+        # a working repository. Check out the repo 1 秒之前 time into ./src so
+        # ./src/.git is present when OpenWrt copies src/.
+        uses: actions/checkout@v4
+        with:
+          path: src
           fetch-depth: 0
 
       - name: Inject version and git env for build
