@@ -37,6 +37,7 @@ jobs:
           - aarch64_cortex-a53
         sdk:
           - openwrt-24.10
+          - openwrt-21.02
           - SNAPSHOT
 
     steps:
