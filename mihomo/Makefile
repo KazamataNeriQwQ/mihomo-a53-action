@@ -1,23 +1,18 @@
-# SPDX-License-Identifier: GPL-2.0-or-later
-
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mihomo
 PKG_VERSION:=1.19.27
 PKG_RELEASE:=1
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
-PKG_SOURCE_VERSION:=v$(PKG_VERSION)
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
+PKG_SOURCE:=v$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo/archive/refs/tags/
+PKG_SOURCE_SUBDIR:=mihomo-v$(PKG_VERSION)
 PKG_HASH:=e6351ce8123bd1f43d90b558f872b4bfb20f029c70dc6fb61895b34ed4851bbc
-PKG_MIRROR_HASH:=e6351ce8123bd1f43d90b558f872b4bfb20f029c70dc6fb61895b34ed4851bbc
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
-PKG_MAINTAINER:=KazamataNeri <Shiro_Neri@iCloud.com>
+PKG_MAINTAINER:=Your Name <your.email@example.com>
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -32,9 +27,9 @@ endef
 
 define Package/mihomo/description
   Mihomo is a simple and fast proxy client.
-  This package compiles the mihomo binary from source.
 endef
 
+# 手动编译（保留你之前的 CGO 和动态链接设置）
 define Build/Compile
 	( \
 		cd $(PKG_BUILD_DIR); \
@@ -46,7 +41,7 @@ define Build/Compile
 		-buildvcs=false \
 		-tags with_gvisor \
 		-trimpath \
-		-ldflags="-w -s -buildid=" \
+		-ldflags="-w -s -buildid= -linkmode=external" \
 		-o $(PKG_NAME) . \
 	)
 endef
